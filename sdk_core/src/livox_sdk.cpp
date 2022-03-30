@@ -130,6 +130,6 @@ void DisableConsoleLogger() {
   is_console_log_enable = false;
 }
 
-void AddDevice(const char *broadcast_code, const char *ip) {
+void AddLidar(const char *broadcast_code, const char *ip) {
   DeviceDiscovery().AddLidar(broadcast_code, ip);
 }
