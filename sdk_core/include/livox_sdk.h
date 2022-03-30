@@ -992,6 +992,8 @@ livox_status LidarSetUtcSyncTime(uint8_t handle,
                                  CommonCommandCallback cb,
                                  void *client_data);
 
+void AddLidar(const char *broadcast_code, const char *ip);
+
 #ifdef __cplusplus
 }
 #endif

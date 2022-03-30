@@ -235,6 +235,19 @@ void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *ad
   }
 }
 
+void DeviceDiscovery::AddLidar(const char *broadcast_code, const char *ip) {
+  BroadcastDeviceInfo device_info;
+  memcpy(device_info.broadcast_code, broadcast_code, sizeof(device_info.broadcast_code));
+
+  CommPacket packet;
+  memcpy((void*)(packet.data), (void*)(&device_info), (sizeof(BroadcastDeviceInfo)-sizeof(device_info.ip)));
+
+  struct sockaddr addr;
+  inet_pton(AF_INET, ip, &((struct sockaddr_in*)&addr)->sin_addr);
+
+  OnBroadcast(packet, &addr);
+}
+
 
 DeviceDiscovery &device_discovery() {
   static DeviceDiscovery discovery;

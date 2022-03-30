@@ -1,6 +1,8 @@
+compile_commands.json
 
 # ignore dir
-#build/
+.cache/
+build/
 build/*.txt
 build/Makefile
 build/*.cmake

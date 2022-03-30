@@ -69,6 +69,7 @@ class DeviceDiscovery : public noncopyable, IOLoop::IOLoopDelegate {
    */
   void OnData(socket_t, void *client_data);
   void OnTimer(TimePoint now);
+  void AddLidar(const char *broadcast_code, const char *ip);
 
  private:
   void OnBroadcast(const CommPacket &packet, struct sockaddr *addr);
