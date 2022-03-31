@@ -23,21 +23,21 @@
 //
 
 #include "device_discovery.h"
-#include <algorithm>
-#include <mutex>
-#include <iostream>
-#include <vector>
 #include "base/logging.h"
 #include "base/network/network_util.h"
 #include "command_handler/command_impl.h"
 #include "device_manager.h"
 #include "livox_def.h"
+#include <algorithm>
+#include <cstdint>
+#include <iostream>
+#include <mutex>
+#include <vector>
 
-using std::tuple;
 using std::string;
+using std::tuple;
 using std::vector;
 using std::chrono::steady_clock;
-
 
 namespace livox {
 
@@ -69,7 +69,8 @@ void DeviceDiscovery::OnData(socket_t sock, void *) {
   uint32_t buf_size = 0;
   uint8_t *cache_buf = comm_port_->FetchCacheFreeSpace(&buf_size);
   int size = buf_size;
-  size = util::RecvFrom(sock, reinterpret_cast<char *>(cache_buf), buf_size, 0, &addr, &addrlen);
+  size = util::RecvFrom(sock, reinterpret_cast<char *>(cache_buf), buf_size, 0,
+                        &addr, &addrlen);
   if (size < 0) {
     return;
   }
@@ -79,9 +80,11 @@ void DeviceDiscovery::OnData(socket_t sock, void *) {
   memset(&packet, 0, sizeof(packet));
 
   while ((kParseSuccess == comm_port_->ParseCommStream(&packet))) {
-    if (packet.cmd_set == kCommandSetGeneral && packet.cmd_code == kCommandIDGeneralBroadcast) {
+    if (packet.cmd_set == kCommandSetGeneral &&
+        packet.cmd_code == kCommandIDGeneralBroadcast) {
       OnBroadcast(packet, &addr);
-    } else if (packet.cmd_set == kCommandSetGeneral && packet.cmd_code == kCommandIDGeneralHandshake) {
+    } else if (packet.cmd_set == kCommandSetGeneral &&
+               packet.cmd_code == kCommandIDGeneralHandshake) {
       if (connecting_devices_.find(sock) == connecting_devices_.end()) {
         continue;
       }
@@ -139,23 +142,26 @@ void DeviceDiscovery::Uninit() {
   }
 }
 
-void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *addr) {
+void DeviceDiscovery::OnBroadcast(const CommPacket &packet,
+                                  struct sockaddr *addr) {
   if (packet.data == NULL) {
     return;
   }
 
   BroadcastDeviceInfo device_info;
-  memcpy((void*)(&device_info),(void*)(packet.data),(sizeof(BroadcastDeviceInfo)-sizeof(device_info.ip)));
+  memcpy((void *)(&device_info), (void *)(packet.data),
+         (sizeof(BroadcastDeviceInfo) - sizeof(device_info.ip)));
   string broadcast_code = device_info.broadcast_code;
   LOG_INFO(" Broadcast broadcast code: {}", broadcast_code);
 
   char ip[16];
   memset(&ip, 0, sizeof(ip));
-  inet_ntop(AF_INET, &((struct sockaddr_in*)addr)->sin_addr, ip, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &((struct sockaddr_in *)addr)->sin_addr, ip,
+            INET_ADDRSTRLEN);
   strncpy(device_info.ip, ip, sizeof(device_info.ip));
-  
+
   device_manager().BroadcastDevices(&device_info);
- 
+
   DeviceInfo lidar_info;
   bool found = device_manager().FindDevice(broadcast_code, lidar_info);
 
@@ -168,7 +174,8 @@ void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *ad
   }
 
   ++port_count;
-  strncpy(lidar_info.broadcast_code, broadcast_code.c_str(), sizeof(lidar_info.broadcast_code)-1);
+  strncpy(lidar_info.broadcast_code, broadcast_code.c_str(),
+          sizeof(lidar_info.broadcast_code) - 1);
   lidar_info.cmd_port = kListenPort + kCmdPortOffset + port_count;
   lidar_info.data_port = kListenPort + kDataPortOffset + port_count;
   lidar_info.sensor_port = kListenPort + kSensorPortOffset + port_count;
@@ -193,7 +200,7 @@ void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *ad
   do {
     HandshakeRequest handshake_req;
     uint32_t local_ip = 0;
-    if (util::FindLocalIp(*(struct sockaddr_in*)addr, local_ip) == false) {
+    if (util::FindLocalIp(*(struct sockaddr_in *)addr, local_ip) == false) {
       result = false;
       LOG_INFO("LocalIp and DeviceIp are not in same subnet");
       break;
@@ -217,8 +224,10 @@ void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *ad
 
     vector<uint8_t> buf(kMaxCommandBufferSize + 1);
     int o_len = kMaxCommandBufferSize;
-    comm_port_->Pack(buf.data(), kMaxCommandBufferSize, (uint32_t *)&o_len, packet);
-    int byte_send = sendto(cmd_sock, reinterpret_cast<const char *>(buf.data()), o_len, 0, addr, sizeof(*addr));
+    comm_port_->Pack(buf.data(), kMaxCommandBufferSize, (uint32_t *)&o_len,
+                     packet);
+    int byte_send = sendto(cmd_sock, reinterpret_cast<const char *>(buf.data()),
+                           o_len, 0, addr, sizeof(*addr));
     if (byte_send < 0) {
       return;
     }
@@ -237,21 +246,21 @@ void DeviceDiscovery::OnBroadcast(const CommPacket &packet,  struct sockaddr *ad
 
 void DeviceDiscovery::AddLidar(const char *broadcast_code, const char *ip) {
   BroadcastDeviceInfo device_info;
-  memcpy(device_info.broadcast_code, broadcast_code, sizeof(device_info.broadcast_code));
+  memcpy(device_info.broadcast_code, broadcast_code,
+         sizeof(device_info.broadcast_code));
 
   CommPacket packet;
-  memcpy((void*)(packet.data), (void*)(&device_info), (sizeof(BroadcastDeviceInfo)-sizeof(device_info.ip)));
+  packet.data = (uint8_t *)(&device_info);
 
   struct sockaddr addr;
-  inet_pton(AF_INET, ip, &((struct sockaddr_in*)&addr)->sin_addr);
+  inet_pton(AF_INET, ip, &((struct sockaddr_in *)&addr)->sin_addr);
 
   OnBroadcast(packet, &addr);
 }
-
 
 DeviceDiscovery &device_discovery() {
   static DeviceDiscovery discovery;
   return discovery;
 }
 
-}  // namespace livox
+} // namespace livox
